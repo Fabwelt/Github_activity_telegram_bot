@@ -21,7 +21,7 @@ This script monitors one or more GitHub (public and private) repositories for ne
 
 ### 1. Clone the Repository
 
-```bash
+```
 git clone https://github.com/yourusername/repo-name.git
 cd repo-name
 ```
@@ -30,7 +30,7 @@ cd repo-name
 
 No external dependencies are required for this script. However, ensure you have `requests` installed. If not, you can install it via pip:
 
-```bash
+```
 pip install requests
 ```
 
@@ -47,7 +47,7 @@ You need to set the following environment variables to run the script:
 
 You can add these lines to your `.bashrc`, `.bash_profile`, or `.zshrc` file:
 
-```bash
+```
 export GITHUB_TOKEN='your_github_token'
 export GITHUB_USERNAME='your_github_username'
 export TELEGRAM_TOKEN='your_telegram_token'
@@ -56,7 +56,7 @@ export TELEGRAM_CHANNEL_ID='your_telegram_channel_id'
 
 After adding these lines, reload your shell:
 
-```bash
+```
 source ~/.bashrc  # or source ~/.bash_profile or source ~/.zshrc
 ```
 
@@ -68,13 +68,13 @@ Alternatively, use a `.env` file and `python-dotenv`:
 
 1. **Install `python-dotenv`:**
 
-    ```bash
+    ```
     pip install python-dotenv
     ```
 
 2. **Create a `.env` file:**
 
-    ```bash
+    ```
     GITHUB_TOKEN=your_github_token
     GITHUB_USERNAME=your_github_username
     TELEGRAM_TOKEN=your_telegram_token
@@ -104,7 +104,7 @@ repositories = [
 
 Run the script using Python:
 
-```bash
+```
 python github_to_telegram.py
 ```
 
