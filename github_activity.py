@@ -19,6 +19,9 @@ repositories = [
 # File to keep track of posted commits
 POSTED_COMMITS_FILE = 'posted_commits.txt'
 
+# Maximum length for Telegram messages
+MAX_MESSAGE_LENGTH = 4000
+
 # Function to escape Markdown special characters except hyphens and periods
 def escape_markdown(text):
     escape_chars = r'\_*[]()~`>#+=|{}!'
@@ -51,16 +54,13 @@ def fetch_commit_details(repo_name, commit_sha):
 # Function to send a message to Telegram with retries
 def send_message_to_telegram(message):
     url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
-    payload = {
-        'chat_id': TELEGRAM_CHANNEL_ID,
-        'text': message,
-        'parse_mode': 'Markdown'
-    }
     retries = 3
+
     for attempt in range(retries):
         try:
-            response = requests.post(url, data=payload)
+            response = requests.post(url, data={'chat_id': TELEGRAM_CHANNEL_ID, 'text': message, 'parse_mode': 'Markdown'})
             response.raise_for_status()
+            print(f"Message sent: {message[:50]}...")  # Print only the first 50 characters for brevity
             return response.json()
         except requests.exceptions.RequestException as e:
             print(f"Error sending message to Telegram: {e}")
@@ -85,44 +85,44 @@ def mark_commit_as_posted(commit_sha):
         file.write(commit_sha + '\n')
 
 def update_telegram_with_github_activity():
-    # Calculate the time 72 hours ago using timezone-aware datetime
+    # Calculate the time 48 hours ago using timezone-aware datetime
     time_limit = datetime.now(timezone.utc) - timedelta(hours=48)
     print(f"Time limit: {time_limit}")
-    
+
     for repo_name in repositories:
         activities = fetch_repo_activity(repo_name)
-        
+
         # Debug: print raw events
         print(f"Fetched {len(activities)} events for {repo_name}")
-        
+
         # Filter and sort events by creation date (oldest first)
         events = [event for event in activities if event['type'] == 'PushEvent' and event['payload']['commits']]
         print(f"Filtered {len(events)} PushEvent activities for {repo_name}")
-        
+
         # Sort the events by created_at
         events.sort(key=lambda e: e['created_at'])
-        
+
         for event in events:
             # Parse event's creation date
             event_time = datetime.strptime(event['created_at'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)
             print(f"Processing event at {event_time} (repo: {repo_name})")
-            
-            # Process only events that occurred within the last 72 hours
+
+            # Process only events that occurred within the last 48 hours
             if event_time > time_limit:
                 for commit in event['payload']['commits']:
                     commit_sha = commit['sha']
-                    
+
                     # Check if this commit has already been posted
                     if is_commit_posted(commit_sha):
                         print(f"Commit {commit_sha} already posted. Skipping.")
                         continue
-                    
+
                     commit_message = escape_markdown(commit['message'])
                     commit_date = event_time.strftime('%Y-%m-%d %H:%M:%S')
-                    
+
                     # Fetch commit details to get the list of changed files
                     commit_details = fetch_commit_details(repo_name, commit_sha)
-                    
+
                     # Extract only filenames and extensions
                     files_changed = [escape_markdown(os.path.basename(file['filename'])) for file in commit_details.get('files', [])]
                     files_changed_text = "\n".join([f"- {file}" for file in files_changed]) if files_changed else "No files changed."
@@ -134,11 +134,18 @@ def update_telegram_with_github_activity():
                         f"*Commit Date:* **{commit_date}**\n\n"
                         f"*Files Changed:*\n{files_changed_text}\n"
                     )
-                    
-                    # Send to Telegram
+
+                    # Truncate the message if it exceeds the max length
+                    if len(message) > MAX_MESSAGE_LENGTH:
+                        message = message[:MAX_MESSAGE_LENGTH - 3] + '...'
+
+                    # Debug: print the message length
+                    print(f"Message length: {len(message)}")
+
+                    # Send the message
                     result = send_message_to_telegram(message)
                     print(result)  # Check if the message was successfully sent
-                    
+
                     # Mark the commit as posted
                     if result and result.get('ok'):
                         mark_commit_as_posted(commit_sha)
